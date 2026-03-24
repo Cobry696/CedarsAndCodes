@@ -13,6 +13,8 @@ from PySide6.QtWidgets import (
     QTextEdit,
     QScrollArea
 )
+
+# Hi
 from PySide6.QtCore import QSize, Qt
 from PySide6.QtGui import QAction, QIcon, QKeySequence, QFontDatabase, QFont, QTextCursor, QShortcut, QTextDocument
 from PySide6.QtWebEngineWidgets import QWebEngineView
