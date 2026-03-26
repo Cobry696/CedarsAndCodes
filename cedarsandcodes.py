@@ -6,9 +6,10 @@ from email.message import EmailMessage
 import ssl
 import smtplib
 import os
+import re
 
 #Connect to db
-conn = psycopg2.connect(
+conn = psycopg2.connect( # change to app user
     host="localhost",
     database="Cedars&Codes",  
     user="postgres",
@@ -77,8 +78,13 @@ def DeleteUser(email: str) -> bool:
     return True
 
 def Login(username: str, password: str) -> bool:
-    cursor.execute("SELECT password FROM users WHERE username = %s", (username,))
-    result = cursor.fetchone()
+    
+    if re.match(r".+@.+\..+"): # check if user entered an email instead:
+        cursor.execute("SELECT password FROM users WHERE email = %s", (username))
+        result = cursor.fetchone()
+    else:
+        cursor.execute("SELECT password FROM users WHERE username = %s", (username))
+        result = cursor.fetchone()
     if not result:
         return False
     
