@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (
 )
 
 # Hi
-from PySide6.QtCore import QSize, Qt
+from PySide6.QtCore import QSize, Qt, QObject, Signal
 from PySide6.QtGui import QAction, QIcon, QKeySequence, QFontDatabase, QFont, QTextCursor, QShortcut, QTextDocument
 from PySide6.QtWebEngineWidgets import QWebEngineView
 import sys
@@ -37,11 +37,25 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("Cedars&Codes")
 
-        self.setCentralWidget(LoginPage())
+        loginPage = LoginPage()
+        loginPage.logInSignal.connect(self.loggedIn)
+
+        self.homePage = HomePage()
+
+        self.setCentralWidget(loginPage)
+
+    def loggedIn(self, isLoggedIn):
+        if isLoggedIn:
+            print("Congrats")
+            self.setCentralWidget(self.homePage)
 
 class LoginPage(QWidget):
+    # signal for teeling the program to log in
+    logInSignal = Signal(bool)
     def __init__(self):
         super().__init__()
+
+        
 
         self.layout1 = QVBoxLayout()
         self.layout1.setContentsMargins(200,200,200,600)
@@ -83,10 +97,14 @@ class LoginPage(QWidget):
 
         # BUTTONS!!!
         self.loginButton = QPushButton("Login")
+        self.loginButton.clicked.connect(self.logInButtonClicked)
+
         self.signupButton = QPushButton("New? Go To Account Creation")
         self.signupButton.clicked.connect(self.newButtonClicked)
 
         self.createAccountButton = QPushButton("Create Account")
+        self.createAccountButton.clicked.connect(self.createAccountButtonClicked)
+
         self.goBackToLoginButton = QPushButton("Go back to login")
         self.goBackToLoginButton.clicked.connect(self.backToLoginButtonClicked)
 
@@ -118,7 +136,8 @@ class LoginPage(QWidget):
 
     # button events
     def logInButtonClicked(self):
-        cnc.Login(self.unameEntry.text(), self.pwordEntry.text()) # have to add fname and lname
+        # isLoggedIn = cnc.Login(self.unameEntry.text(), self.pwordEntry.text()) # have to add fname and lname # uncomment
+        self.logInSignal.emit(True) # telling the program we have attempted a login. replace with isLoggedIn instead of true
     def newButtonClicked(self):
         self.unameEntry.setPlaceholderText("Username")
         self.emailEntry.show()
@@ -127,7 +146,8 @@ class LoginPage(QWidget):
         self.upperButton.setCurrentIndex(1)
         self.lowerButton.setCurrentIndex(1)
     def createAccountButtonClicked(self):
-        cnc.CreateUser(self.unameEntry.text(), self.emailEntry.text(), self.pwordEntry.text(), self.fnameEntry.text(), self.lnameEntry.text())
+        isLoggedIn = cnc.CreateUser(self.unameEntry.text(), self.emailEntry.text(), self.pwordEntry.text(), self.fnameEntry.text(), self.lnameEntry.text())
+        self.logInSignal.emit(isLoggedIn) # telling the program we have attempted a login
     def backToLoginButtonClicked(self):
         self.unameEntry.setPlaceholderText("Username/Email")
         self.emailEntry.hide()
@@ -140,6 +160,43 @@ class LoginPage(QWidget):
         width = event.size().width()
         height = event.size().height()
         self.layout1.setContentsMargins(width*0.2, height*0.2, width*0.2, height*0.2)
+
+class HomePage(QWidget):
+    def __init__(self):
+        super().__init__()
+
+        self.grid = QGridLayout()
+
+        # labels
+        self.titleLabel = QLabel("Cedars & Codes")
+        
+        # entries
+        self.searchEntry = QLineEdit()
+        self.searchEntry.setPlaceholderText("Search")
+
+        # drop downs
+        self.languageDropdown = QComboBox()
+        self.languageDropdown.setPlaceholderText("Language")
+        self.languageDropdown.currentTextChanged.connect()
+        self.languageDropdown.addItems( # should change to be based on what rows are in the table
+            [
+                "Python",
+                "C",
+                "Java",
+                "Rust",
+                "C++"
+            ]
+        )
+
+        self.outputDropdown = QComboBox()
+        self.outputDropdown.setPlaceholderText("Output Type")
+        # add items based on selected language
+
+    def changeLanguage(self, text): # gets the text of the new language selected and uses it to alter the types shown in the output dropdown and input selector
+        #self.outputDropdown
+        pass
+
+
         
 
         
