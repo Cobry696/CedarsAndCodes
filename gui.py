@@ -22,8 +22,12 @@ from PySide6.QtGui import QAction, QIcon, QKeySequence, QFontDatabase, QFont, QT
 from PySide6.QtWebEngineWidgets import QWebEngineView
 import sys
 import re
+import qdarktheme
 
 app = QApplication(sys.argv)
+app.setStyle("Fusion")
+stylesheet = qdarktheme.load_stylesheet()
+app.setStyleSheet(stylesheet)
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -42,21 +46,19 @@ class LoginPage(QWidget):
 
         # text inputs for username and password
         unameEntry = QLineEdit()
+        unameEntry.setPlaceholderText("Username")
+
         pwordEntry = QLineEdit()
         pwordEntry.setEchoMode(QLineEdit.Password) # makes the password display as dots
+        pwordEntry.setPlaceholderText("Password")
 
         # labels for page title and username/password entries
         titleLabel = QLabel("Login/Sign Up")
-        unameLabel = QLabel("Username:")
-        pwordLabel = QLabel("Password:")
 
         # actually adding the widgets to the layout
         layout.addWidget(titleLabel)
-        layout.addWidget(unameLabel)
         layout.addWidget(unameEntry)
-        layout.addWidget(pwordLabel)
         layout.addWidget(pwordEntry)
-
         
 
         
