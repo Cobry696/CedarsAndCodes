@@ -41,18 +41,23 @@ class MainWindow(QMainWindow):
         loginPage = LoginPage()
         loginPage.logInSignal.connect(self.loggedIn)
 
-        self.homePage = HomePage()
-
         self.setCentralWidget(loginPage)
 
-    def loggedIn(self, isLoggedIn):
+    def loggedIn(self, isLoggedIn, val1, val2): # named val as we do not know which is username and which is email
         if isLoggedIn:
             print("Congrats")
+            self.homePage = HomePage()
+            if re.match(r".+@.+\..+", val1):
+                self.username = val2
+                self.email = val1
+            else:
+                self.username = val1
+                self.email = val2
             self.setCentralWidget(self.homePage)
 
 class LoginPage(QWidget):
     # signal for teeling the program to log in
-    logInSignal = Signal(bool)
+    logInSignal = Signal(bool, str, str)
     def __init__(self):
         super().__init__()
 
@@ -91,7 +96,6 @@ class LoginPage(QWidget):
         self.nameLayoutWidget = QWidget()
         self.nameLayoutWidget.setLayout(self.nameLayout)
         self.nameLayoutWidget.hide() # hides the name entry when logging in
-        
 
         # labels for page title and username/password entries
         self.titleLabel = QLabel("Log In")
@@ -137,8 +141,11 @@ class LoginPage(QWidget):
 
     # button events
     def logInButtonClicked(self):
-        isLoggedIn = cnc.Login(self.unameEntry.text(), self.pwordEntry.text()) # have to add fname and lname # uncomment
-        self.logInSignal.emit(isLoggedIn) # telling the program we have attempted a login. replace with isLoggedIn instead of true
+        username, password = self.unameEntry.text(), self.pwordEntry.text()
+        loginResult = cnc.Login(username, password, True) # contains the loggedin boolean and the missing piece the user did not enter
+        isLoggedIn = loginResult[0]
+        missing = loginResult[1] # this part helps us get the email/username that the user doesnt enter so we can use it when they upload code
+        self.logInSignal.emit(isLoggedIn, username, missing) # telling the program we have attempted a login
     def newButtonClicked(self):
         self.unameEntry.setPlaceholderText("Username")
         self.emailEntry.show()
@@ -147,8 +154,9 @@ class LoginPage(QWidget):
         self.upperButton.setCurrentIndex(1)
         self.lowerButton.setCurrentIndex(1)
     def createAccountButtonClicked(self):
-        isLoggedIn = cnc.CreateUser(self.unameEntry.text(), self.emailEntry.text(), self.pwordEntry.text(), self.fnameEntry.text(), self.lnameEntry.text())
-        self.logInSignal.emit(isLoggedIn) # telling the program we have attempted a login
+        username, email = self.unameEntry.text(), self.emailEntry.text()
+        isLoggedIn = cnc.CreateUser(username, email, self.pwordEntry.text(), self.fnameEntry.text(), self.lnameEntry.text())
+        self.logInSignal.emit(isLoggedIn, username, email) # telling the program we have attempted a login
     def backToLoginButtonClicked(self):
         self.unameEntry.setPlaceholderText("Username/Email")
         self.emailEntry.hide()
@@ -177,8 +185,29 @@ class HomePage(QWidget):
         self.searchEntry.setPlaceholderText("Search")
         self.searchEntry.returnPressed.connect(self.search)
 
+        # adding entries
+        self.addTitleEntry = QLineEdit()
+        self.addTitleEntry.setPlaceholderText("Title")
+        self.addTitleEntry.returnPressed.connect(self.search)
+        self.addTitleEntry.hide()
+
+        self.addDescriptionEntry = QLineEdit()
+        self.addDescriptionEntry.setPlaceholderText("Description")
+        self.addDescriptionEntry.returnPressed.connect(self.search)
+        self.addDescriptionEntry.hide()
+
+        self.addCodeEntry = QLineEdit()
+        self.addCodeEntry.setPlaceholderText("Code")
+        self.addCodeEntry.returnPressed.connect(self.search)
+        self.addCodeEntry.hide()
+
         # BUTTONS!!!!
         self.addButton = SquareButton("+")
+        self.addButton.clicked.connect(self.openAddPanel)
+
+        self.submitSnippetButton = QPushButton("Submit")
+        self.submitSnippetButton.clicked.connect(self.submitCodeSnippet)
+        self.submitSnippetButton.hide()
 
         # drop downs
         self.languageDropdown = QComboBox()
@@ -253,6 +282,14 @@ class HomePage(QWidget):
         self.grid.addWidget(self.searchByDropdown, 0, 3)
         self.grid.addWidget(self.addButton, 6, 0)
 
+        # for adding the add stuff to the grid
+        self.grid.addWidget(self.addTitleEntry, 3,3)
+        self.grid.addWidget(self.addDescriptionEntry, 4,3)
+        self.grid.addWidget(self.addCodeEntry, 5,3, 2, 1)
+        self.grid.addWidget(self.submitSnippetButton, 5,4)
+        # self.grid.addWidget()
+        # self.grid.addWidget()
+
         self.setLayout(self.grid)
 
     def changeLanguage(self, text): # gets the text of the new language selected and uses it to alter the types shown in the output dropdown and input selector
@@ -272,6 +309,15 @@ class HomePage(QWidget):
             self.searchBy = "Description"
         else:
             self.searchBy = "Title"
+
+    def openAddPanel(self):
+        self.addTitleEntry.show()
+        self.addDescriptionEntry.show()
+        self.addCodeEntry.show()
+        self.submitSnippetButton.show()
+
+    def submitCodeSnippet(self):
+        cnc.AddSnippet()
 
 class SquareButton(QPushButton):
     def __init__(self, text, parent=None):
