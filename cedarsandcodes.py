@@ -8,16 +8,20 @@ import smtplib
 import os
 import re
 
-#Connect to db
-conn = psycopg2.connect( # change to app user
-    host="localhost",
-    database="Cedars&Codes",  
-    user="postgres",
-    password="sami67706940",
-    port="5432"
-)
-cursor = conn.cursor()
-print("Connected successfully!")
+db_up = False # change to true when the database is running
+
+if db_up:
+    #Connect to db
+    
+    # conn = psycopg2.connect(
+    #     host="10.30.31.153",
+    #     database="Cedars&Codes",
+    #     user="app_user",
+    #     password="E8S5NB4D27g3",
+    #     port="5432"
+    # )
+    cursor = conn.cursor()
+    print("Connected successfully!")
 
 # Email notifciation
 def send_email(fnm: str, to_email: str):
@@ -78,12 +82,15 @@ def DeleteUser(email: str) -> bool:
     return True
 
 def Login(username: str, password: str) -> bool:
+
+    if not db_up:
+        return True
     
-    if re.match(r".+@.+\..+"): # check if user entered an email instead:
-        cursor.execute("SELECT password FROM users WHERE email = %s", (username))
+    if re.match(r".+@.+\..+", username): # check if user entered an email instead:
+        cursor.execute("SELECT password FROM users WHERE email = %s", (username,))
         result = cursor.fetchone()
     else:
-        cursor.execute("SELECT password FROM users WHERE username = %s", (username))
+        cursor.execute("SELECT password FROM users WHERE username = %s", (username,))
         result = cursor.fetchone()
     if not result:
         return False

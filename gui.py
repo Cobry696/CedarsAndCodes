@@ -15,7 +15,8 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QLineEdit,
     QHBoxLayout,
-    QStackedWidget
+    QStackedWidget,
+    QSizePolicy
 )
 
 # Hi
@@ -25,7 +26,7 @@ from PySide6.QtWebEngineWidgets import QWebEngineView
 import sys
 import re
 import qdarktheme
-#import cedarsandcodes as cnc
+import cedarsandcodes as cnc
 
 app = QApplication(sys.argv)
 app.setStyle("Fusion")
@@ -136,8 +137,8 @@ class LoginPage(QWidget):
 
     # button events
     def logInButtonClicked(self):
-        # isLoggedIn = cnc.Login(self.unameEntry.text(), self.pwordEntry.text()) # have to add fname and lname # uncomment
-        self.logInSignal.emit(True) # telling the program we have attempted a login. replace with isLoggedIn instead of true
+        isLoggedIn = cnc.Login(self.unameEntry.text(), self.pwordEntry.text()) # have to add fname and lname # uncomment
+        self.logInSignal.emit(isLoggedIn) # telling the program we have attempted a login. replace with isLoggedIn instead of true
     def newButtonClicked(self):
         self.unameEntry.setPlaceholderText("Username")
         self.emailEntry.show()
@@ -166,6 +167,7 @@ class HomePage(QWidget):
         super().__init__()
 
         self.grid = QGridLayout()
+        self.searchBy = "Title"
 
         # labels
         self.titleLabel = QLabel("Cedars & Codes")
@@ -173,11 +175,15 @@ class HomePage(QWidget):
         # entries
         self.searchEntry = QLineEdit()
         self.searchEntry.setPlaceholderText("Search")
+        self.searchEntry.returnPressed.connect(self.search)
+
+        # BUTTONS!!!!
+        self.addButton = SquareButton("+")
 
         # drop downs
         self.languageDropdown = QComboBox()
         self.languageDropdown.setPlaceholderText("Language")
-        self.languageDropdown.currentTextChanged.connect()
+        self.languageDropdown.currentTextChanged.connect(self.changeLanguage)
         self.languageDropdown.addItems( # should change to be based on what rows are in the table
             [
                 "Python",
@@ -187,14 +193,99 @@ class HomePage(QWidget):
                 "C++"
             ]
         )
+        
+        self.searchByDropdown = QComboBox()
+        self.searchByDropdown.setPlaceholderText("Search By...")
+        self.searchByDropdown.currentTextChanged.connect(self.searchByChanged)
+        self.searchByDropdown.addItems([
+            "Title",
+            "Description"
+        ])
+
+        types = [ # change to pull from the table data
+                "Int",
+                "Float",
+                "String",
+                "Object",
+                "Other",
+                "Array-Int",
+                "Array-Float",
+                "Array-String",
+                "Array-Object",
+                "Array-Other",
+            ]
+            
 
         self.outputDropdown = QComboBox()
         self.outputDropdown.setPlaceholderText("Output Type")
-        # add items based on selected language
+        self.outputDropdown.currentTextChanged.connect(self.changeOutput)
+        self.outputDropdown.addItems(types)
+
+        # gonna wanna use QCompleter instead so we can select multiple input types
+        self.inputDropdown = QComboBox()
+        self.inputDropdown.setPlaceholderText("Input Type")
+        self.inputDropdown.currentTextChanged.connect(self.changeInput)
+        self.inputDropdown.addItems(types)
+
+        # changing grid stretching
+        self.grid.setColumnStretch(0,1)
+        self.grid.setColumnStretch(1,1)
+        self.grid.setColumnStretch(2,1)
+        self.grid.setColumnStretch(3,1)
+        self.grid.setColumnStretch(4,1)
+        self.grid.setColumnStretch(5,1)
+        self.grid.setColumnStretch(6,1)
+
+        self.grid.setRowStretch(0,1)
+        self.grid.setRowStretch(1,1)
+        self.grid.setRowStretch(2,1)
+        self.grid.setRowStretch(3,1)
+        self.grid.setRowStretch(4,1)
+        self.grid.setRowStretch(5,1)
+        self.grid.setRowStretch(6,1)
+
+        # add to layout and display
+        self.grid.addWidget(self.titleLabel, 0,0)
+        self.grid.addWidget(self.searchEntry, 1,3, 1, 3)
+        self.grid.addWidget(self.languageDropdown, 1,6)
+        self.grid.addWidget(self.inputDropdown, 0,5)
+        self.grid.addWidget(self.outputDropdown, 0,6)
+        self.grid.addWidget(self.searchByDropdown, 0, 3)
+        self.grid.addWidget(self.addButton, 6, 0)
+
+        self.setLayout(self.grid)
 
     def changeLanguage(self, text): # gets the text of the new language selected and uses it to alter the types shown in the output dropdown and input selector
-        #self.outputDropdown
         pass
+
+    def changeOutput(self, text):
+        pass
+
+    def changeInput(self, text):
+        pass
+
+    def search(self, term): # connect with database
+        pass
+
+    def searchByChanged(self, text):
+        if text != "Title":
+            self.searchBy = "Description"
+        else:
+            self.searchBy = "Title"
+
+class SquareButton(QPushButton):
+    def __init__(self, text, parent=None):
+        super().__init__(text, parent)
+        # Allow vertical and horizontal expanding
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+
+    def hasHeightForWidth(self):
+        # Indicate that the height depends on the width
+        return True
+
+    def heightForWidth(self, width):
+        # Force height to be equal to width
+        return width
 
 
         
