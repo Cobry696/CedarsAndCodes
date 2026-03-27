@@ -15,7 +15,8 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QLineEdit,
     QHBoxLayout,
-    QStackedWidget
+    QStackedWidget,
+    QSizePolicy
 )
 
 # Hi
@@ -25,7 +26,7 @@ from PySide6.QtWebEngineWidgets import QWebEngineView
 import sys
 import re
 import qdarktheme
-#import cedarsandcodes as cnc
+import cedarsandcodes as cnc
 
 app = QApplication(sys.argv)
 app.setStyle("Fusion")
@@ -40,18 +41,23 @@ class MainWindow(QMainWindow):
         loginPage = LoginPage()
         loginPage.logInSignal.connect(self.loggedIn)
 
-        self.homePage = HomePage()
-
         self.setCentralWidget(loginPage)
 
-    def loggedIn(self, isLoggedIn):
+    def loggedIn(self, isLoggedIn, val1, val2): # named val as we do not know which is username and which is email
         if isLoggedIn:
             print("Congrats")
+            self.homePage = HomePage()
+            if re.match(r".+@.+\..+", val1):
+                self.username = val2
+                self.email = val1
+            else:
+                self.username = val1
+                self.email = val2
             self.setCentralWidget(self.homePage)
 
 class LoginPage(QWidget):
     # signal for teeling the program to log in
-    logInSignal = Signal(bool)
+    logInSignal = Signal(bool, str, str)
     def __init__(self):
         super().__init__()
 
@@ -90,7 +96,6 @@ class LoginPage(QWidget):
         self.nameLayoutWidget = QWidget()
         self.nameLayoutWidget.setLayout(self.nameLayout)
         self.nameLayoutWidget.hide() # hides the name entry when logging in
-        
 
         # labels for page title and username/password entries
         self.titleLabel = QLabel("Log In")
@@ -136,8 +141,11 @@ class LoginPage(QWidget):
 
     # button events
     def logInButtonClicked(self):
-        # isLoggedIn = cnc.Login(self.unameEntry.text(), self.pwordEntry.text()) # have to add fname and lname # uncomment
-        self.logInSignal.emit(True) # telling the program we have attempted a login. replace with isLoggedIn instead of true
+        username, password = self.unameEntry.text(), self.pwordEntry.text()
+        loginResult = cnc.Login(username, password, True) # contains the loggedin boolean and the missing piece the user did not enter
+        isLoggedIn = loginResult[0]
+        missing = loginResult[1] # this part helps us get the email/username that the user doesnt enter so we can use it when they upload code
+        self.logInSignal.emit(isLoggedIn, username, missing) # telling the program we have attempted a login
     def newButtonClicked(self):
         self.unameEntry.setPlaceholderText("Username")
         self.emailEntry.show()
@@ -146,8 +154,9 @@ class LoginPage(QWidget):
         self.upperButton.setCurrentIndex(1)
         self.lowerButton.setCurrentIndex(1)
     def createAccountButtonClicked(self):
-        isLoggedIn = cnc.CreateUser(self.unameEntry.text(), self.emailEntry.text(), self.pwordEntry.text(), self.fnameEntry.text(), self.lnameEntry.text())
-        self.logInSignal.emit(isLoggedIn) # telling the program we have attempted a login
+        username, email = self.unameEntry.text(), self.emailEntry.text()
+        isLoggedIn = cnc.CreateUser(username, email, self.pwordEntry.text(), self.fnameEntry.text(), self.lnameEntry.text())
+        self.logInSignal.emit(isLoggedIn, username, email) # telling the program we have attempted a login
     def backToLoginButtonClicked(self):
         self.unameEntry.setPlaceholderText("Username/Email")
         self.emailEntry.hide()
@@ -166,6 +175,7 @@ class HomePage(QWidget):
         super().__init__()
 
         self.grid = QGridLayout()
+        self.searchBy = "Title"
 
         # labels
         self.titleLabel = QLabel("Cedars & Codes")
@@ -173,11 +183,36 @@ class HomePage(QWidget):
         # entries
         self.searchEntry = QLineEdit()
         self.searchEntry.setPlaceholderText("Search")
+        self.searchEntry.returnPressed.connect(self.search)
+
+        # adding entries
+        self.addTitleEntry = QLineEdit()
+        self.addTitleEntry.setPlaceholderText("Title")
+        self.addTitleEntry.returnPressed.connect(self.search)
+        self.addTitleEntry.hide()
+
+        self.addDescriptionEntry = QLineEdit()
+        self.addDescriptionEntry.setPlaceholderText("Description")
+        self.addDescriptionEntry.returnPressed.connect(self.search)
+        self.addDescriptionEntry.hide()
+
+        self.addCodeEntry = QLineEdit()
+        self.addCodeEntry.setPlaceholderText("Code")
+        self.addCodeEntry.returnPressed.connect(self.search)
+        self.addCodeEntry.hide()
+
+        # BUTTONS!!!!
+        self.addButton = SquareButton("+")
+        self.addButton.clicked.connect(self.openAddPanel)
+
+        self.submitSnippetButton = QPushButton("Submit")
+        self.submitSnippetButton.clicked.connect(self.submitCodeSnippet)
+        self.submitSnippetButton.hide()
 
         # drop downs
         self.languageDropdown = QComboBox()
         self.languageDropdown.setPlaceholderText("Language")
-        self.languageDropdown.currentTextChanged.connect()
+        self.languageDropdown.currentTextChanged.connect(self.changeLanguage)
         self.languageDropdown.addItems( # should change to be based on what rows are in the table
             [
                 "Python",
@@ -187,14 +222,116 @@ class HomePage(QWidget):
                 "C++"
             ]
         )
+        
+        self.searchByDropdown = QComboBox()
+        self.searchByDropdown.setPlaceholderText("Search By...")
+        self.searchByDropdown.currentTextChanged.connect(self.searchByChanged)
+        self.searchByDropdown.addItems([
+            "Title",
+            "Description"
+        ])
+
+        types = [ # change to pull from the table data
+                "Int",
+                "Float",
+                "String",
+                "Object",
+                "Other",
+                "Array-Int",
+                "Array-Float",
+                "Array-String",
+                "Array-Object",
+                "Array-Other",
+            ]
+            
 
         self.outputDropdown = QComboBox()
         self.outputDropdown.setPlaceholderText("Output Type")
-        # add items based on selected language
+        self.outputDropdown.currentTextChanged.connect(self.changeOutput)
+        self.outputDropdown.addItems(types)
+
+        # gonna wanna use QCompleter instead so we can select multiple input types
+        self.inputDropdown = QComboBox()
+        self.inputDropdown.setPlaceholderText("Input Type")
+        self.inputDropdown.currentTextChanged.connect(self.changeInput)
+        self.inputDropdown.addItems(types)
+
+        # changing grid stretching
+        self.grid.setColumnStretch(0,1)
+        self.grid.setColumnStretch(1,1)
+        self.grid.setColumnStretch(2,1)
+        self.grid.setColumnStretch(3,1)
+        self.grid.setColumnStretch(4,1)
+        self.grid.setColumnStretch(5,1)
+        self.grid.setColumnStretch(6,1)
+
+        self.grid.setRowStretch(0,1)
+        self.grid.setRowStretch(1,1)
+        self.grid.setRowStretch(2,1)
+        self.grid.setRowStretch(3,1)
+        self.grid.setRowStretch(4,1)
+        self.grid.setRowStretch(5,1)
+        self.grid.setRowStretch(6,1)
+
+        # add to layout and display
+        self.grid.addWidget(self.titleLabel, 0,0)
+        self.grid.addWidget(self.searchEntry, 1,3, 1, 3)
+        self.grid.addWidget(self.languageDropdown, 1,6)
+        self.grid.addWidget(self.inputDropdown, 0,5)
+        self.grid.addWidget(self.outputDropdown, 0,6)
+        self.grid.addWidget(self.searchByDropdown, 0, 3)
+        self.grid.addWidget(self.addButton, 6, 0)
+
+        # for adding the add stuff to the grid
+        self.grid.addWidget(self.addTitleEntry, 3,3)
+        self.grid.addWidget(self.addDescriptionEntry, 4,3)
+        self.grid.addWidget(self.addCodeEntry, 5,3, 2, 1)
+        self.grid.addWidget(self.submitSnippetButton, 5,4)
+        # self.grid.addWidget()
+        # self.grid.addWidget()
+
+        self.setLayout(self.grid)
 
     def changeLanguage(self, text): # gets the text of the new language selected and uses it to alter the types shown in the output dropdown and input selector
-        #self.outputDropdown
         pass
+
+    def changeOutput(self, text):
+        pass
+
+    def changeInput(self, text):
+        pass
+
+    def search(self, term): # connect with database
+        pass
+
+    def searchByChanged(self, text):
+        if text != "Title":
+            self.searchBy = "Description"
+        else:
+            self.searchBy = "Title"
+
+    def openAddPanel(self):
+        self.addTitleEntry.show()
+        self.addDescriptionEntry.show()
+        self.addCodeEntry.show()
+        self.submitSnippetButton.show()
+
+    def submitCodeSnippet(self):
+        cnc.AddSnippet()
+
+class SquareButton(QPushButton):
+    def __init__(self, text, parent=None):
+        super().__init__(text, parent)
+        # Allow vertical and horizontal expanding
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+
+    def hasHeightForWidth(self):
+        # Indicate that the height depends on the width
+        return True
+
+    def heightForWidth(self, width):
+        # Force height to be equal to width
+        return width
 
 
         

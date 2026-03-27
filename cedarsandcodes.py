@@ -8,16 +8,26 @@ import smtplib
 import os
 import re
 
-#Connect to db
-conn = psycopg2.connect( # change to app user
-    host="localhost",
-    database="Cedars&Codes",  
-    user="postgres",
-    password="sami67706940",
-    port="5432"
-)
-cursor = conn.cursor()
-print("Connected successfully!")
+db_up = False # change to true when the database is running
+
+if db_up:
+    #Connect to db
+    conn = psycopg2.connect( # change to app user
+        host="10.30.31.153",
+        database="Cedars&Codes",  
+        user="colby",
+        password="pass1", 
+        port="5432"
+    )
+    # conn = psycopg2.connect(
+    #     host="10.30.31.153",
+    #     database="Cedars&Codes",
+    #     user="app_user",
+    #     password="E8S5NB4D27g3",
+    #     port="5432"
+    # )
+    cursor = conn.cursor()
+    print("Connected successfully!")
 
 # Email notifciation
 def send_email(fnm: str, to_email: str):
@@ -77,14 +87,23 @@ def DeleteUser(email: str) -> bool:
     conn.commit()
     return True
 
-def Login(username: str, password: str) -> bool:
+def Login(username: str, password: str, pass_missing: bool):
+
+    if not db_up:
+        return True, "abc" # this abc is here so the program doesnt get confused when it asks for the missing piece
     
-    if re.match(r".+@.+\..+"): # check if user entered an email instead:
-        cursor.execute("SELECT password FROM users WHERE email = %s", (username))
+    if re.match(r".+@.+\..+", username): # check if user entered an email instead
+        cursor.execute("SELECT password FROM users WHERE email = %s", (username,))
         result = cursor.fetchone()
+        if pass_missing: # might mess stuff up im not sure how psycopg2 works
+            cursor.execute("SELECT username FROM users WHERE email = %s", (username,))
+            missing = cursor.fetchone()[0]
     else:
-        cursor.execute("SELECT password FROM users WHERE username = %s", (username))
+        cursor.execute("SELECT password FROM users WHERE username = %s", (username,))
         result = cursor.fetchone()
+        if pass_missing:
+            cursor.execute("SELECT email FROM users WHERE username = %s", (username,))
+            missing = cursor.fetchone()[0]
     if not result:
         return False
     
@@ -94,7 +113,10 @@ def Login(username: str, password: str) -> bool:
     ph = PasswordHasher()
     try:
         ph.verify(hashed_pw, password)
-        return True
+        if pass_missing:
+            return True,missing
+        else:
+            return True
     except Exception:
         return False
     
