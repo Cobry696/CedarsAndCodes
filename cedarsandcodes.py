@@ -8,12 +8,12 @@ import smtplib
 import os
 import re
 
-db_up = False # change to true when the database is running
+db_up = True # change to true when the database is running
 
 if db_up:
     #Connect to db
     conn = psycopg2.connect( # change to app user
-        host="10.30.31.153",
+        host="100.66.137.2",
         database="Cedars&Codes",  
         user="colby",
         password="pass1", 
@@ -93,17 +93,17 @@ def Login(username: str, password: str, pass_missing: bool):
         return True, "abc" # this abc is here so the program doesnt get confused when it asks for the missing piece
     
     if re.match(r".+@.+\..+", username): # check if user entered an email instead
-        cursor.execute("SELECT password FROM users WHERE email = %s", (username,))
+        cursor.execute("SELECT password FROM users WHERE email = %s", (username.lower(),))
         result = cursor.fetchone()
         if pass_missing: # might mess stuff up im not sure how psycopg2 works
-            cursor.execute("SELECT username FROM users WHERE email = %s", (username,))
-            missing = cursor.fetchone()[0]
+            cursor.execute("SELECT username FROM users WHERE email = %s", (username.lower(),))
+            missing = cursor.fetchone()
     else:
-        cursor.execute("SELECT password FROM users WHERE username = %s", (username,))
+        cursor.execute("SELECT password FROM users WHERE username = %s", (username.lower(),))
         result = cursor.fetchone()
         if pass_missing:
-            cursor.execute("SELECT email FROM users WHERE username = %s", (username,))
-            missing = cursor.fetchone()[0]
+            cursor.execute("SELECT email FROM users WHERE username = %s", (username.lower(),))
+            missing = cursor.fetchone()
     if not result:
         return False
     
@@ -113,8 +113,8 @@ def Login(username: str, password: str, pass_missing: bool):
     ph = PasswordHasher()
     try:
         ph.verify(hashed_pw, password)
-        if pass_missing:
-            return True,missing
+        if pass_missing and missing != None:
+            return True,missing[0].lower()
         else:
             return True
     except Exception:
@@ -167,17 +167,30 @@ def fetch_snippets_by_language(language_name: str):
     
     return cursor.fetchall()
 
-def fetchPython():
-    return fetch_snippets_by_language("Python")
-
-def fetchC():
-    return fetch_snippets_by_language("C")
-
-def fetchJava():
-    return fetch_snippets_by_language("Java")
-
-def fetchRust():
-    return fetch_snippets_by_language("Rust")
-
-def fetchCplusplus():
-    return fetch_snippets_by_language("C++")
+# Fetch snippets by search as well as filter the snippets with language and stuff
+def fetch_snippets(search_term: str = "", search_by: str = "title", language_name: str = "Python", input_type: str = "", output_type: str = ""):
+    # We want to check against each of these parameters by
+    # seeing if the search term is contained in the title or description depending on searchBy
+    # seeing if the language names match
+    # checking if the input types are included in the input types of the snippet
+    # checking if the output types are included in the output types of the snippet
+    if search_term == "": # if there is no search term we must change the default based on what the search by is
+        pass
+    if search_by == "Description": # check what we are seraching by and either match the title or description
+        cursor.execute("""
+            SELECT s.snippet_id, s.title, s.code_content, s.description
+            FROM snippets s
+            JOIN snippet_languages sl ON s.snippet_id = sl.snippet_id
+            JOIN languages l ON sl.language_id = l.language_id
+            WHERE l.language_name = %s AND s.description = %s
+        """, (language_name, search_term))
+    else:
+        cursor.execute("""
+            SELECT s.snippet_id, s.title, s.code_content, s.description
+            FROM snippets s
+            JOIN snippet_languages sl ON s.snippet_id = sl.snippet_id
+            JOIN languages l ON sl.language_id = l.language_id
+            WHERE l.language_name = %s AND s.title = %s
+        """, (language_name, search_term))
+    
+    return cursor.fetchall()
