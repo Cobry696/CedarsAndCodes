@@ -16,7 +16,10 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QHBoxLayout,
     QStackedWidget,
-    QSizePolicy
+    QSizePolicy,
+    QListWidget,
+    QCompleter,
+    QListWidgetItem
 )
 
 # Hi
@@ -48,11 +51,11 @@ class MainWindow(QMainWindow):
             print("Congrats")
             self.homePage = HomePage()
             if re.match(r".+@.+\..+", val1):
-                self.username = val2
-                self.email = val1
+                self.homePage.username = val2
+                self.homePage.email = val1
             else:
-                self.username = val1
-                self.email = val2
+                self.homePage.username = val1
+                self.homePage.email = val2
             self.setCentralWidget(self.homePage)
 
 class LoginPage(QWidget):
@@ -143,9 +146,14 @@ class LoginPage(QWidget):
     def logInButtonClicked(self):
         username, password = self.unameEntry.text(), self.pwordEntry.text()
         loginResult = cnc.Login(username, password, True) # contains the loggedin boolean and the missing piece the user did not enter
-        isLoggedIn = loginResult[0]
-        missing = loginResult[1] # this part helps us get the email/username that the user doesnt enter so we can use it when they upload code
-        self.logInSignal.emit(isLoggedIn, username, missing) # telling the program we have attempted a login
+        if isinstance(loginResult, tuple):
+            isLoggedIn = loginResult[0]
+            missing = loginResult[1] # this part helps us get the email/username that the user doesnt enter so we can use it when they upload code
+            self.logInSignal.emit(isLoggedIn, username, missing) # telling the program we have attempted a login
+        else: # if login result is just a bool
+            isLoggedIn = loginResult
+            self.logInSignal.emit(isLoggedIn, username, "") # telling the program we have attempted a login. send an empty string for the missing as its false so it doesnt matter
+        
     def newButtonClicked(self):
         self.unameEntry.setPlaceholderText("Username")
         self.emailEntry.show()
@@ -173,9 +181,12 @@ class LoginPage(QWidget):
 class HomePage(QWidget):
     def __init__(self):
         super().__init__()
+        self.username = "" # will be set by the main window when created
+        self.email = "" # will be set by the main window when created
 
         self.grid = QGridLayout()
         self.searchBy = "Title"
+        self.addPanelOpen = False
 
         # labels
         self.titleLabel = QLabel("Cedars & Codes")
@@ -203,7 +214,8 @@ class HomePage(QWidget):
 
         # BUTTONS!!!!
         self.addButton = SquareButton("+")
-        self.addButton.clicked.connect(self.openAddPanel)
+        self.addButton.setStyleSheet("font-size: 60pt; font-weight: bold")
+        self.addButton.clicked.connect(self.toggleAddPanel)
 
         self.submitSnippetButton = QPushButton("Submit")
         self.submitSnippetButton.clicked.connect(self.submitCodeSnippet)
@@ -245,16 +257,34 @@ class HomePage(QWidget):
             ]
             
 
-        self.outputDropdown = QComboBox()
-        self.outputDropdown.setPlaceholderText("Output Type")
+        self.outputDropdown = SearchableDropdown()
+        self.outputDropdown.lineEdit().setPlaceholderText("Output Type")
         self.outputDropdown.currentTextChanged.connect(self.changeOutput)
         self.outputDropdown.addItems(types)
+        self.outputDropdown.setCurrentIndex(-1) # makes sure it starts on placeholder text
 
-        # gonna wanna use QCompleter instead so we can select multiple input types
-        self.inputDropdown = QComboBox()
-        self.inputDropdown.setPlaceholderText("Input Type")
+        self.inputDropdown = SearchableDropdown()
+        self.inputDropdown.lineEdit().setPlaceholderText("Input Types")
         self.inputDropdown.currentTextChanged.connect(self.changeInput)
         self.inputDropdown.addItems(types)
+        self.inputDropdown.setCurrentIndex(-1) # makes sure it starts on placeholder text
+
+        # dropdowns for adding
+        self.addOutputDropdown = SearchableDropdown()
+        self.addOutputDropdown.lineEdit().setPlaceholderText("Output Type")
+        self.addOutputDropdown.currentTextChanged.connect(self.changeOutput)
+        self.addOutputDropdown.addItems(types)
+        self.addOutputDropdown.setCurrentIndex(-1) # makes sure it starts on placeholder text
+        self.addOutputDropdown.hide
+
+        self.addInputDropdown = SearchableDropdown()
+        self.addInputDropdown.lineEdit().setPlaceholderText("Input Types")
+        self.addInputDropdown.currentTextChanged.connect(self.changeInput)
+        self.addInputDropdown.addItems(types)
+        self.addInputDropdown.setCurrentIndex(-1) # makes sure it starts on placeholder text
+        self.addInputDropdown.hide()
+
+
 
         # changing grid stretching
         self.grid.setColumnStretch(0,1)
@@ -282,11 +312,19 @@ class HomePage(QWidget):
         self.grid.addWidget(self.searchByDropdown, 0, 3)
         self.grid.addWidget(self.addButton, 6, 0)
 
+        self.grid.addWidget(self.inputDropdown.list, 2,5)
+        self.grid.addWidget(self.outputDropdown.list, 2,6)
+
         # for adding the add stuff to the grid
         self.grid.addWidget(self.addTitleEntry, 3,3)
         self.grid.addWidget(self.addDescriptionEntry, 4,3)
-        self.grid.addWidget(self.addCodeEntry, 5,3, 2, 1)
+        self.grid.addWidget(self.addCodeEntry, 5,3)
         self.grid.addWidget(self.submitSnippetButton, 5,4)
+        self.grid.addWidget(self.addInputDropdown, 5,5)
+        self.grid.addWidget(self.addOutputDropdown, 5,6)
+
+        self.grid.addWidget(self.addInputDropdown.list, 6,5)
+        self.grid.addWidget(self.addOutputDropdown.list, 6,6)
         # self.grid.addWidget()
         # self.grid.addWidget()
 
@@ -301,8 +339,8 @@ class HomePage(QWidget):
     def changeInput(self, text):
         pass
 
-    def search(self, term): # connect with database
-        pass
+    def search(self): # connect with database
+        print(cnc.fetch_snippets(self.searchEntry.text(), self.searchBy, self.languageDropdown.currentText()))
 
     def searchByChanged(self, text):
         if text != "Title":
@@ -310,14 +348,25 @@ class HomePage(QWidget):
         else:
             self.searchBy = "Title"
 
-    def openAddPanel(self):
-        self.addTitleEntry.show()
-        self.addDescriptionEntry.show()
-        self.addCodeEntry.show()
-        self.submitSnippetButton.show()
+    def toggleAddPanel(self):
+        if self.addPanelOpen:
+            self.addButton.setText("+")
+            self.addTitleEntry.hide()
+            self.addDescriptionEntry.hide()
+            self.addCodeEntry.hide()
+            self.submitSnippetButton.hide()
+        else:
+            self.addButton.setText("-")
+            self.addTitleEntry.show()
+            self.addDescriptionEntry.show()
+            self.addCodeEntry.show()
+            self.submitSnippetButton.show()
+
+        self.addPanelOpen = not self.addPanelOpen # toggle the panel
 
     def submitCodeSnippet(self):
-        cnc.AddSnippet()
+        cnc.AddSnippet(self.email, self.addTitleEntry.text(), self.addCodeEntry.text(), self.addDescriptionEntry.text())
+        self.toggleAddPanel()
 
 class SquareButton(QPushButton):
     def __init__(self, text, parent=None):
@@ -332,6 +381,43 @@ class SquareButton(QPushButton):
     def heightForWidth(self, width):
         # Force height to be equal to width
         return width
+
+class SearchableDropdown(QComboBox): # this is mainly for the type dropdowns
+    def __init__(self):
+        super().__init__()
+
+        # these are the lines that make it searchable
+        self.setEditable(True)
+        self.setInsertPolicy(QComboBox.NoInsert)
+        self.completer().setCompletionMode(QCompleter.PopupCompletion)
+        self.activated.connect(self.addItemToList)
+
+        # this will make it multiselect
+
+        self.list = QListWidget() # a display underneath the dropdown that will contain the currently selected types
+
+        # TODO
+
+    def addItemToList(self):
+
+        def clear_self():
+            takenItem = self.list.takeItem(self.list.row(item))
+            if takenItem:
+                del takenItem
+
+        # adds an item to the list
+        item = QListWidgetItem()
+        button = QPushButton(self.currentText())
+        button.clicked.connect(clear_self)
+        self.list.addItem(item)
+        self.list.setItemWidget(item, button)
+        self.sizeHint=button.sizeHint
+
+        self.setCurrentIndex(-1) # sets back to placeholder text
+
+        
+
+
 
 
         
