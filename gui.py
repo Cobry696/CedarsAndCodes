@@ -52,9 +52,11 @@ class MainWindow(QMainWindow):
             print("Congrats")
             self.homePage = HomePage()
             if re.match(r".+@.+\..+", val1):
+                #print(val2,val1)
                 self.homePage.username = val2
                 self.homePage.email = val1
             else:
+                #print(val1,val2)
                 self.homePage.username = val1
                 self.homePage.email = val2
             self.setCentralWidget(self.homePage)
@@ -220,6 +222,9 @@ class HomePage(QWidget):
         self.submitSnippetButton.clicked.connect(self.submitCodeSnippet)
         self.submitSnippetButton.hide()
 
+        self.logoutButton = QPushButton("Logout")
+        self.logoutButton.clicked.connect(self.logoutButtonClicked)
+
         # drop downs
         self.languages = [i[0] for i in cnc.get_languages()]
         self.languageDropdown = QComboBox()
@@ -306,6 +311,8 @@ class HomePage(QWidget):
         self.grid.setRowStretch(6,1)
 
         # add to layout and display
+        self.grid.addWidget(self.logoutButton, 1,0)
+
         self.grid.addWidget(self.titleLabel, 0,0)
         self.grid.addWidget(self.searchEntry, 1,3, 1, 3)
         self.grid.addWidget(self.languageDropdown, 1,6)
@@ -392,6 +399,9 @@ class HomePage(QWidget):
         cnc.AddSnippet(self.email, self.addTitleEntry.text(), self.addCodeEntry.toPlainText(), self.addDescriptionEntry.toPlainText(), ",".join(self.addInputDropdown.listItems), ",".join(self.addOutputDropdown.listItems), self.addLanguageDropdown.currentText())
         self.toggleAddPanel()
 
+    def logoutButtonClicked(self):
+        QApplication.instance().quit()
+
 class SquareButton(QPushButton):
     def __init__(self, text, parent=None):
         super().__init__(text, parent)
@@ -429,6 +439,7 @@ class SearchableDropdown(QComboBox): # this is mainly for the type dropdowns
             takenItem = self.list.takeItem(self.list.row(item))
             if takenItem:
                 del takenItem
+            
             
         if t not in self.listItems:
             # adds an item to the list
