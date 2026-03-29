@@ -131,26 +131,25 @@ def AddLanguage(language_name: str) -> bool:
     return True
 
 def AddSnippet(user_email: str, title: str, code_content: str,
-               description: str = "", input_types: str = "", output_types: str = "",
-               snippet_type: str = "", languages: list = []) -> bool:
+               description: str = "", input_types: str = "", output_types: str = "", 
+               language: str = "") -> bool:
     
     cursor.execute("""
-        INSERT INTO snippets (user_email, title, code_content, description, input_types, output_types, snippet_type)
-        VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING snippet_id
-    """, (user_email, title, code_content, description, input_types, output_types, snippet_type))
+        INSERT INTO snippets (user_email, title, code_content, description, input_types, output_types)
+        VALUES (%s, %s, %s, %s, %s, %s) RETURNING snippet_id
+    """, (user_email, title, code_content, description, input_types, output_types))
     
     snippet_id = cursor.fetchone()[0]
     
-    for lang_name in languages:
-        cursor.execute("SELECT language_id FROM languages WHERE language_name = %s", (lang_name,))
-        lang = cursor.fetchone()
-        if lang:
-            language_id = lang[0]
-        else:
-            cursor.execute("INSERT INTO languages (language_name) VALUES (%s) RETURNING language_id", (lang_name,))
-            language_id = cursor.fetchone()[0]
-        
-        cursor.execute("INSERT INTO snippet_languages (snippet_id, language_id) VALUES (%s, %s)", (snippet_id, language_id))
+    cursor.execute("SELECT language_id FROM languages WHERE language_name = %s", (language,))
+    lang = cursor.fetchone()
+    if lang:
+        language_id = lang[0]
+    else:
+        cursor.execute("INSERT INTO languages (language_name) VALUES (%s) RETURNING language_id", (language,))
+        language_id = cursor.fetchone()[0]
+    
+    cursor.execute("INSERT INTO snippet_languages (snippet_id, language_id) VALUES (%s, %s)", (snippet_id, language_id))
     
     conn.commit()
     return True
@@ -168,29 +167,49 @@ def fetch_snippets_by_language(language_name: str):
     return cursor.fetchall()
 
 # Fetch snippets by search as well as filter the snippets with language and stuff
-def fetch_snippets(search_term: str = "", search_by: str = "title", language_name: str = "Python", input_type: str = "", output_type: str = ""):
+def fetch_snippets(search_term: str = "", search_by: str = "title", language_name: str = "", input_types: list = [], output_types: list = []):
     # We want to check against each of these parameters by
-    # seeing if the search term is contained in the title or description depending on searchBy
-    # seeing if the language names match
-    # checking if the input types are included in the input types of the snippet
-    # checking if the output types are included in the output types of the snippet
-    if search_term == "": # if there is no search term we must change the default based on what the search by is
-        pass
-    if search_by == "Description": # check what we are seraching by and either match the title or description
-        cursor.execute("""
+    # seeing if the search term is contained in the title or description depending on searchBy (0)
+    # seeing if the language names match (1)
+    # checking if the input types are included in the input types of the snippet (2)
+    # checking if the output types are included in the output types of the snippet (3)
+    # do this by incrementally building a query and list of inputs to the query
+
+    query = """
             SELECT s.snippet_id, s.title, s.code_content, s.description
             FROM snippets s
             JOIN snippet_languages sl ON s.snippet_id = sl.snippet_id
-            JOIN languages l ON sl.language_id = l.language_id
-            WHERE l.language_name = %s AND s.description = %s
-        """, (language_name, search_term))
-    else:
-        cursor.execute("""
-            SELECT s.snippet_id, s.title, s.code_content, s.description
-            FROM snippets s
-            JOIN snippet_languages sl ON s.snippet_id = sl.snippet_id
-            JOIN languages l ON sl.language_id = l.language_id
-            WHERE l.language_name = %s AND s.title = %s
-        """, (language_name, search_term))
-    
+            JOIN languages l ON sl.language_id = l.language_id 
+        """
+
+    queryInputs = ()
+
+    # adding the actual search term part (0)
+    if search_term != "":
+        if search_by == "title":
+            query += "WHERE s.title ILIKE %s "
+        elif search_by == "description":
+            query += "WHERE s.description ILIKE %s "
+        queryInputs += (search_term,)
+
+    # (1)
+    if language_name != "":
+        query += "WHERE l.language_name = %s "
+        queryInputs += (language_name,)
+
+    #(2)
+    if len(input_types) > 0:
+        query += "WHERE s.input_types LIKE %s "
+        input_types_string = ",".join(input_types)
+        queryInputs += (input_types_string,)
+
+    #(3)
+    if len(output_types) > 0:
+        query += "WHERE s.output_types LIKE %s "
+        output_types_string = ",".join(output_types)
+        queryInputs += (output_types_string,)
+
+    print(query)
+    print(queryInputs)
+    cursor.execute(query, queryInputs)
     return cursor.fetchall()

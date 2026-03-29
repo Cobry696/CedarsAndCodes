@@ -19,7 +19,8 @@ from PySide6.QtWidgets import (
     QSizePolicy,
     QListWidget,
     QCompleter,
-    QListWidgetItem
+    QListWidgetItem,
+    QListView
 )
 
 # Hi
@@ -254,6 +255,7 @@ class HomePage(QWidget):
                 "Array-String",
                 "Array-Object",
                 "Array-Other",
+                "None"
             ]
             
 
@@ -270,12 +272,27 @@ class HomePage(QWidget):
         self.inputDropdown.setCurrentIndex(-1) # makes sure it starts on placeholder text
 
         # dropdowns for adding
+        self.addLanguageDropdown = QComboBox()
+        self.addLanguageDropdown.setPlaceholderText("Language")
+        self.addLanguageDropdown.currentTextChanged.connect(self.changeLanguage)
+        self.addLanguageDropdown.addItems( # should change to be based on what rows are in the table
+            [
+                "Python",
+                "C",
+                "Java",
+                "Rust",
+                "C++"
+            ]
+        )
+        self.addLanguageDropdown.hide()
+        
         self.addOutputDropdown = SearchableDropdown()
         self.addOutputDropdown.lineEdit().setPlaceholderText("Output Type")
         self.addOutputDropdown.currentTextChanged.connect(self.changeOutput)
         self.addOutputDropdown.addItems(types)
         self.addOutputDropdown.setCurrentIndex(-1) # makes sure it starts on placeholder text
-        self.addOutputDropdown.hide
+        self.addOutputDropdown.hide()
+        self.addOutputDropdown.list.hide()
 
         self.addInputDropdown = SearchableDropdown()
         self.addInputDropdown.lineEdit().setPlaceholderText("Input Types")
@@ -283,8 +300,10 @@ class HomePage(QWidget):
         self.addInputDropdown.addItems(types)
         self.addInputDropdown.setCurrentIndex(-1) # makes sure it starts on placeholder text
         self.addInputDropdown.hide()
+        self.addInputDropdown.list.hide()
 
-
+        # snippet list
+        self.snippetList = SnippetList()
 
         # changing grid stretching
         self.grid.setColumnStretch(0,1)
@@ -320,17 +339,22 @@ class HomePage(QWidget):
         self.grid.addWidget(self.addDescriptionEntry, 4,3)
         self.grid.addWidget(self.addCodeEntry, 5,3)
         self.grid.addWidget(self.submitSnippetButton, 5,4)
+        self.grid.addWidget(self.addLanguageDropdown, 4,5)
         self.grid.addWidget(self.addInputDropdown, 5,5)
         self.grid.addWidget(self.addOutputDropdown, 5,6)
 
         self.grid.addWidget(self.addInputDropdown.list, 6,5)
         self.grid.addWidget(self.addOutputDropdown.list, 6,6)
+
+        # snippetList
+        self.grid.addWidget(self.snippetList, 2,2,3,3)
+        
         # self.grid.addWidget()
         # self.grid.addWidget()
 
         self.setLayout(self.grid)
 
-    def changeLanguage(self, text): # gets the text of the new language selected and uses it to alter the types shown in the output dropdown and input selector
+    def changeLanguage(self, text):
         pass
 
     def changeOutput(self, text):
@@ -340,7 +364,9 @@ class HomePage(QWidget):
         pass
 
     def search(self): # connect with database
-        print(cnc.fetch_snippets(self.searchEntry.text(), self.searchBy, self.languageDropdown.currentText()))
+        snippets = cnc.fetch_snippets(self.searchEntry.text(), self.searchBy, self.languageDropdown.currentText(), self.inputDropdown.listItems, self.outputDropdown.listItems)
+        print(snippets)
+        self.snippetList.addSnippets(snippets)
 
     def searchByChanged(self, text):
         if text != "Title":
@@ -355,17 +381,31 @@ class HomePage(QWidget):
             self.addDescriptionEntry.hide()
             self.addCodeEntry.hide()
             self.submitSnippetButton.hide()
+            self.addLanguageDropdown.hide()
+            self.addOutputDropdown.hide()
+            self.addOutputDropdown.list.hide()
+            self.addInputDropdown.hide()
+            self.addInputDropdown.list.hide()
+
+            self.snippetList.show() # toggles on when the panel is hidden
         else:
             self.addButton.setText("-")
             self.addTitleEntry.show()
             self.addDescriptionEntry.show()
             self.addCodeEntry.show()
             self.submitSnippetButton.show()
+            self.addLanguageDropdown.show()
+            self.addOutputDropdown.show()
+            self.addOutputDropdown.list.show()
+            self.addInputDropdown.show()
+            self.addInputDropdown.list.show()
+
+            self.snippetList.hide() # toggles off when the panel is brought up
 
         self.addPanelOpen = not self.addPanelOpen # toggle the panel
 
     def submitCodeSnippet(self):
-        cnc.AddSnippet(self.email, self.addTitleEntry.text(), self.addCodeEntry.text(), self.addDescriptionEntry.text())
+        cnc.AddSnippet(self.email, self.addTitleEntry.text(), self.addCodeEntry.text(), self.addDescriptionEntry.text(), ",".join(self.addInputDropdown.listItems), ",".join(self.addOutputDropdown.listItems), self.addLanguageDropdown.currentText())
         self.toggleAddPanel()
 
 class SquareButton(QPushButton):
@@ -393,19 +433,22 @@ class SearchableDropdown(QComboBox): # this is mainly for the type dropdowns
         self.activated.connect(self.addItemToList)
 
         # this will make it multiselect
-
+        self.listItems = []
         self.list = QListWidget() # a display underneath the dropdown that will contain the currently selected types
 
-        # TODO
-
-    def addItemToList(self):
-
+    def addItemToList(self): # multiselect stuff
+        t = self.currentText()
+        # weird bug where if you add and remove an item the panel takes two button presses to reopen
         def clear_self():
+            print(t)
+            self.listItems.remove(t)
             takenItem = self.list.takeItem(self.list.row(item))
             if takenItem:
                 del takenItem
+            
 
         # adds an item to the list
+        self.listItems.append(self.currentText())
         item = QListWidgetItem()
         button = QPushButton(self.currentText())
         button.clicked.connect(clear_self)
@@ -415,8 +458,50 @@ class SearchableDropdown(QComboBox): # this is mainly for the type dropdowns
 
         self.setCurrentIndex(-1) # sets back to placeholder text
 
+class SnippetList(QListWidget):
+    def __init__(self):
+        super().__init__()
+    
+    def addSnippets(self, snippets):
+        for snippet in snippets:
+            item = QListWidgetItem()
+            snippetButton = Snippet(snippet[1], snippet[2], snippet[3])
+            self.addItem(item)
+            self.setItemWidget(item, snippetButton)
         
+class Snippet(QPushButton):
+    def __init__(self, title, body, description):
+        super().__init__()
+        self.clicked.connect(self.openCopyDialog)
+        self.title = title
+        self.description = description
+        self.body = body
 
+        self.setText(title)
+        self.setToolTip(description)
+
+        # layout = QHBoxLayout(self) # allowing us to add two bits of text to the button
+        # self.setLayout(layout)
+
+        # self.title = QLabel(title)
+        # self.title.setStyleSheet("font-size: 20pt")
+
+        # self.description = QLabel(description)
+        # self.description.setStyleSheet("font-size: 10pt")
+
+        # layout.addWidget(self.title)
+        # layout.addWidget(self.description)
+
+    def openCopyDialog(self):
+        copyDialog = QMessageBox()
+        copyDialog.setWindowTitle(self.title)
+        copyDialog.setText(self.body)
+        copyDialog.setIcon(QMessageBox.Icon.Information)
+        copyButton = copyDialog.addButton("Copy", QMessageBox.ButtonRole.ActionRole)
+        copyDialog.exec()
+        if copyDialog.clickedButton() == copyButton:
+            clipboard = QApplication.clipboard()
+            clipboard.setText(self.body)
 
 
 
