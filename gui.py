@@ -79,6 +79,7 @@ class LoginPage(QWidget):
         self.pwordEntry = QLineEdit()
         self.pwordEntry.setEchoMode(QLineEdit.Password) # makes the password display as dots
         self.pwordEntry.setPlaceholderText("Password")
+        self.pwordEntry.returnPressed.connect(self.logInButtonClicked)
 
         # entry for email
         self.emailEntry = QLineEdit()
@@ -200,17 +201,14 @@ class HomePage(QWidget):
         # adding entries
         self.addTitleEntry = QLineEdit()
         self.addTitleEntry.setPlaceholderText("Title")
-        self.addTitleEntry.returnPressed.connect(self.search)
         self.addTitleEntry.hide()
 
-        self.addDescriptionEntry = QLineEdit()
+        self.addDescriptionEntry = QTextEdit()
         self.addDescriptionEntry.setPlaceholderText("Description")
-        self.addDescriptionEntry.returnPressed.connect(self.search)
         self.addDescriptionEntry.hide()
 
-        self.addCodeEntry = QLineEdit()
+        self.addCodeEntry = QTextEdit()
         self.addCodeEntry.setPlaceholderText("Code")
-        self.addCodeEntry.returnPressed.connect(self.search)
         self.addCodeEntry.hide()
 
         # BUTTONS!!!!
@@ -348,9 +346,10 @@ class HomePage(QWidget):
     def changeInput(self, text):
         pass
 
-    def search(self): # connect with database
+    def search(self): # connect with database and add the matching snippets to a list
         snippets = cnc.fetch_snippets(self.searchEntry.text(), self.searchBy, self.languageDropdown.currentText(), self.inputDropdown.listItems, self.outputDropdown.listItems)
-        print(snippets)
+        #print(snippets)
+        self.snippetList.clear()
         self.snippetList.addSnippets(snippets)
 
     def searchByChanged(self, text):
@@ -390,7 +389,7 @@ class HomePage(QWidget):
         self.addPanelOpen = not self.addPanelOpen # toggle the panel
 
     def submitCodeSnippet(self):
-        cnc.AddSnippet(self.email, self.addTitleEntry.text(), self.addCodeEntry.text(), self.addDescriptionEntry.text(), ",".join(self.addInputDropdown.listItems), ",".join(self.addOutputDropdown.listItems), self.addLanguageDropdown.currentText())
+        cnc.AddSnippet(self.email, self.addTitleEntry.text(), self.addCodeEntry.toPlainText(), self.addDescriptionEntry.toPlainText(), ",".join(self.addInputDropdown.listItems), ",".join(self.addOutputDropdown.listItems), self.addLanguageDropdown.currentText())
         self.toggleAddPanel()
 
 class SquareButton(QPushButton):
@@ -431,15 +430,15 @@ class SearchableDropdown(QComboBox): # this is mainly for the type dropdowns
             if takenItem:
                 del takenItem
             
-
-        # adds an item to the list
-        self.listItems.append(self.currentText())
-        item = QListWidgetItem()
-        button = QPushButton(self.currentText())
-        button.clicked.connect(clear_self)
-        self.list.addItem(item)
-        self.list.setItemWidget(item, button)
-        self.sizeHint=button.sizeHint
+        if t not in self.listItems:
+            # adds an item to the list
+            self.listItems.append(self.currentText())
+            item = QListWidgetItem()
+            button = QPushButton(self.currentText())
+            button.clicked.connect(clear_self)
+            self.list.addItem(item)
+            self.list.setItemWidget(item, button)
+            self.sizeHint=button.sizeHint
 
         self.setCurrentIndex(-1) # sets back to placeholder text
 
@@ -451,6 +450,7 @@ class SnippetList(QListWidget):
         for snippet in snippets:
             item = QListWidgetItem()
             snippetButton = Snippet(snippet[1], snippet[2], snippet[3])
+            item.setSizeHint(snippetButton.size())
             self.addItem(item)
             self.setItemWidget(item, snippetButton)
         
@@ -463,6 +463,7 @@ class Snippet(QPushButton):
         self.body = body
 
         self.setText(title)
+        self.setStyleSheet("font-size: 20pt; font-weight: bold")
         self.setToolTip(description)
 
         # layout = QHBoxLayout(self) # allowing us to add two bits of text to the button

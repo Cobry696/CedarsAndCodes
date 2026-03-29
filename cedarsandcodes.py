@@ -175,6 +175,8 @@ def fetch_snippets(search_term: str = "", search_by: str = "title", language_nam
     # checking if the output types are included in the output types of the snippet (3)
     # do this by incrementally building a query and list of inputs to the query
 
+    start_and = "WHERE" # will be set to 'AND' when we have a where clause to begin using where instead of and
+
     query = """
             SELECT s.snippet_id, s.title, s.code_content, s.description
             FROM snippets s
@@ -185,29 +187,34 @@ def fetch_snippets(search_term: str = "", search_by: str = "title", language_nam
     queryInputs = ()
 
     # adding the actual search term part (0)
-    if search_term != "":
-        if search_by == "title":
-            query += "WHERE s.title ILIKE %s "
-        elif search_by == "description":
-            query += "WHERE s.description ILIKE %s "
-        queryInputs += (search_term,)
+    if search_by == "Title": # also searches by title if we dont add anythinhg
+        print("dfsilhuerhyueartgkyuirtghgkeyurft")
+        query += f"{start_and} s.title ILIKE %s "
+        start_and = "AND"
+    elif search_by == "Description":
+        query += f"{start_and} s.description ILIKE %s "
+        start_and = "AND"
+    queryInputs += (f"%{search_term}%",)
 
     # (1)
     if language_name != "":
-        query += "WHERE l.language_name = %s "
+        query += f"{start_and} l.language_name = %s "
         queryInputs += (language_name,)
+        start_and = "AND"
 
     #(2)
     if len(input_types) > 0:
-        query += "WHERE s.input_types LIKE %s "
+        query += f"{start_and} s.input_types LIKE %s "
         input_types_string = ",".join(input_types)
-        queryInputs += (input_types_string,)
+        queryInputs += (f"%{input_types_string}%",)
+        start_and = "AND"
 
     #(3)
     if len(output_types) > 0:
-        query += "WHERE s.output_types LIKE %s "
+        query += f"{start_and} s.output_types LIKE %s "
         output_types_string = ",".join(output_types)
-        queryInputs += (output_types_string,)
+        queryInputs += (f"%{output_types_string}%",)
+        start_and = "AND"
 
     print(query)
     print(queryInputs)
