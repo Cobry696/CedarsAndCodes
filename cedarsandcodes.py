@@ -213,3 +213,9 @@ def fetch_snippets(search_term: str = "", search_by: str = "title", language_nam
     print(queryInputs)
     cursor.execute(query, queryInputs)
     return cursor.fetchall()
+
+def get_languages():
+    cursor.execute("""
+    SELECT language_name FROM languages
+    """)
+    return cursor.fetchall()

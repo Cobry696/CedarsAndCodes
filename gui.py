@@ -223,18 +223,11 @@ class HomePage(QWidget):
         self.submitSnippetButton.hide()
 
         # drop downs
+        self.languages = [i[0] for i in cnc.get_languages()]
         self.languageDropdown = QComboBox()
         self.languageDropdown.setPlaceholderText("Language")
         self.languageDropdown.currentTextChanged.connect(self.changeLanguage)
-        self.languageDropdown.addItems( # should change to be based on what rows are in the table
-            [
-                "Python",
-                "C",
-                "Java",
-                "Rust",
-                "C++"
-            ]
-        )
+        self.languageDropdown.addItems(self.languages)
         
         self.searchByDropdown = QComboBox()
         self.searchByDropdown.setPlaceholderText("Search By...")
@@ -275,15 +268,7 @@ class HomePage(QWidget):
         self.addLanguageDropdown = QComboBox()
         self.addLanguageDropdown.setPlaceholderText("Language")
         self.addLanguageDropdown.currentTextChanged.connect(self.changeLanguage)
-        self.addLanguageDropdown.addItems( # should change to be based on what rows are in the table
-            [
-                "Python",
-                "C",
-                "Java",
-                "Rust",
-                "C++"
-            ]
-        )
+        self.addLanguageDropdown.addItems(self.languages)
         self.addLanguageDropdown.hide()
         
         self.addOutputDropdown = SearchableDropdown()
