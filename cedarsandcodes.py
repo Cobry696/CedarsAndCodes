@@ -59,6 +59,10 @@ Cedars & Codes Team
 
 # functions
 def CreateUser(username: str, email: str, password: str, first_name: str = "", last_name: str = "") -> bool:
+
+    if username == "" or password == "" or email == "" or first_name == "" or last_name == "":
+        return False
+
     ph = PasswordHasher()
     hashed_pw = ph.hash(password)
     hashed_b64 = base64.b64encode(hashed_pw.encode("utf-8")).decode("utf-8")
@@ -88,6 +92,9 @@ def DeleteUser(email: str) -> bool:
     return True
 
 def Login(username: str, password: str, pass_missing: bool):
+
+    if username == "" or password == "":
+        return False
 
     if not db_up:
         return True, "abc" # this abc is here so the program doesnt get confused when it asks for the missing piece

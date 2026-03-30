@@ -106,7 +106,12 @@ class LoginPage(QWidget):
         self.nameLayoutWidget.hide() # hides the name entry when logging in
 
         # labels for page title and username/password entries
-        self.titleLabel = QLabel("Log In")
+        self.titleLabel = QLabel("Log In") 
+        self.titleLabel = QLabel("Welcome to Cedars & Codes")  #adding fonts and colors to login page
+        self.fancyFont = QFont("Consolas", 36, QFont.Bold)  
+        self.titleLabel.setFont(self.fancyFont)
+        self.titleLabel.setStyleSheet("color: #87CEEB;") 
+        self.titleLabel.setAlignment(Qt.AlignCenter)
 
         # BUTTONS!!!
         self.loginButton = QPushButton("Login")
@@ -182,6 +187,8 @@ class LoginPage(QWidget):
         width = event.size().width()
         height = event.size().height()
         self.layout1.setContentsMargins(width*0.2, height*0.2, width*0.2, height*0.2)
+        self.fancyFont.setPointSize(width/48)
+        self.titleLabel.setFont(self.fancyFont)
 
 class HomePage(QWidget):
     def __init__(self):
@@ -195,6 +202,17 @@ class HomePage(QWidget):
 
         # labels
         self.titleLabel = QLabel("Cedars & Codes")
+
+        font = QFont("Consolas", 32)      # changed font
+        font.setBold(True)
+        self.titleLabel.setFont(font)
+        
+        self.titleLabel.setAlignment(Qt.AlignCenter)
+        self.titleLabel.setStyleSheet("""
+    QLabel {
+        letter-spacing: 3px;
+    }
+""")
         
         # entries
         self.searchEntry = QLineEdit()
@@ -518,14 +536,7 @@ class Snippet(QPushButton):
         if copyDialog.clickedButton() == copyButton:
             clipboard = QApplication.clipboard()
             clipboard.setText(self.body)
-
-
-
-        
-
-        
-
+            
 window = MainWindow()
 window.show()
-
 app.exec()
