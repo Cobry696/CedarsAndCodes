@@ -20,7 +20,8 @@ from PySide6.QtWidgets import (
     QListWidget,
     QCompleter,
     QListWidgetItem,
-    QListView
+    QListView,
+    QFrame
 )
 
 # Hi
@@ -293,6 +294,17 @@ class HomePage(QWidget):
         # snippet list
         self.snippetList = SnippetList()
 
+        # sub layouts
+        self.addLayout = QVBoxLayout() # this layout will hold the title, language, types
+        self.addLayout.addWidget(self.addTitleEntry)
+        self.addLayout.addWidget(self.addInputDropdown)
+        self.addLayout.addWidget(self.addOutputDropdown)
+        self.addLayout.addWidget(self.addLanguageDropdown)
+        self.addLayout.addWidget(self.submitSnippetButton)
+        self.addLayoutWidget = QWidget()
+        self.addLayoutWidget.setLayout(self.addLayout)
+        self.addLayoutWidget.hide()
+
         # changing grid stretching
         self.grid.setColumnStretch(0,1)
         self.grid.setColumnStretch(1,1)
@@ -325,19 +337,20 @@ class HomePage(QWidget):
         self.grid.addWidget(self.outputDropdown.list, 2,6)
 
         # for adding the add stuff to the grid
-        self.grid.addWidget(self.addTitleEntry, 3,3)
+        #self.grid.addWidget(self.addTitleEntry, 3,3)
         self.grid.addWidget(self.addDescriptionEntry, 4,3)
-        self.grid.addWidget(self.addCodeEntry, 5,3)
-        self.grid.addWidget(self.submitSnippetButton, 5,4)
-        self.grid.addWidget(self.addLanguageDropdown, 4,5)
-        self.grid.addWidget(self.addInputDropdown, 5,5)
-        self.grid.addWidget(self.addOutputDropdown, 5,6)
+        self.grid.addWidget(self.addLayoutWidget, 4, 4)
+        self.grid.addWidget(self.addCodeEntry, 5,3, 2, 2)
+        #self.grid.addWidget(self.submitSnippetButton, 3,6)
+        #self.grid.addWidget(self.addLanguageDropdown, 4,5)
+        #self.grid.addWidget(self.addInputDropdown, 5,5)
+        #self.grid.addWidget(self.addOutputDropdown, 5,6)
 
         self.grid.addWidget(self.addInputDropdown.list, 6,5)
         self.grid.addWidget(self.addOutputDropdown.list, 6,6)
 
         # snippetList
-        self.grid.addWidget(self.snippetList, 2,2,3,3)
+        self.grid.addWidget(self.snippetList, 2,2,5,3)
         
         # self.grid.addWidget()
         # self.grid.addWidget()
@@ -377,6 +390,7 @@ class HomePage(QWidget):
             self.addOutputDropdown.list.hide()
             self.addInputDropdown.hide()
             self.addInputDropdown.list.hide()
+            self.addLayoutWidget.hide()
 
             self.snippetList.show() # toggles on when the panel is hidden
         else:
@@ -390,6 +404,7 @@ class HomePage(QWidget):
             self.addOutputDropdown.list.show()
             self.addInputDropdown.show()
             self.addInputDropdown.list.show()
+            self.addLayoutWidget.show()
 
             self.snippetList.hide() # toggles off when the panel is brought up
 
@@ -406,11 +421,13 @@ class SquareButton(QPushButton):
     def __init__(self, text, parent=None):
         super().__init__(text, parent)
         # Allow vertical and horizontal expanding
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        policy = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        policy.setHeightForWidth(True)
+        self.setSizePolicy(policy)
 
-    def hasHeightForWidth(self):
-        # Indicate that the height depends on the width
-        return True
+    # def hasHeightForWidth(self):
+    #     # Indicate that the height depends on the width
+    #     return True
 
     def heightForWidth(self, width):
         # Force height to be equal to width
@@ -429,6 +446,7 @@ class SearchableDropdown(QComboBox): # this is mainly for the type dropdowns
         # this will make it multiselect
         self.listItems = []
         self.list = QListWidget() # a display underneath the dropdown that will contain the currently selected types
+        self.list.setStyleSheet("border: 0pt")
 
     def addItemToList(self): # multiselect stuff
         t = self.currentText()
@@ -456,12 +474,13 @@ class SearchableDropdown(QComboBox): # this is mainly for the type dropdowns
 class SnippetList(QListWidget):
     def __init__(self):
         super().__init__()
+        self.setStyleSheet("border: 0pt")
     
     def addSnippets(self, snippets):
         for snippet in snippets:
             item = QListWidgetItem()
             snippetButton = Snippet(snippet[1], snippet[2], snippet[3])
-            item.setSizeHint(snippetButton.size())
+            item.setSizeHint(snippetButton.size()/2)
             self.addItem(item)
             self.setItemWidget(item, snippetButton)
         
