@@ -61,6 +61,14 @@ class MainWindow(QMainWindow):
                 self.homePage.username = val1
                 self.homePage.email = val2
             self.setCentralWidget(self.homePage)
+        else:
+            dlg = QMessageBox(self)
+            dlg.setWindowTitle("Warning!")
+            dlg.setText("Invalid credentials!")
+            button = dlg.exec()
+
+            if button == QMessageBox.Ok:
+                print("OK!")
 
 class LoginPage(QWidget):
     # signal for teeling the program to log in
