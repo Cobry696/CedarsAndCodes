@@ -540,3 +540,4 @@ class Snippet(QPushButton):
 window = MainWindow()
 window.show()
 app.exec()
+

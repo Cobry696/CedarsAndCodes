@@ -187,44 +187,43 @@ def fetch_snippets(search_term: str = "", search_by: str = "title", language_nam
     query = """
             SELECT s.snippet_id, s.title, s.code_content, s.description
             FROM snippets s
-            JOIN snippet_languages sl ON s.snippet_id = sl.snippet_id
-            JOIN languages l ON sl.language_id = l.language_id 
+            LEFT JOIN snippet_languages sl ON s.snippet_id = sl.snippet_id
+            LEFT JOIN languages l ON sl.language_id = l.language_id 
         """
 
     queryInputs = ()
 
     # adding the actual search term part (0)
-    if search_by == "Title": # also searches by title if we dont add anythinhg
-        print("dfsilhuerhyueartgkyuirtghgkeyurft")
-        query += f"{start_and} s.title ILIKE %s "
-        start_and = "AND"
-    elif search_by == "Description":
-        query += f"{start_and} s.description ILIKE %s "
-        start_and = "AND"
-    queryInputs += (f"%{search_term}%",)
+    if search_term != "":
+        if search_by == "Title": # also searches by title if we dont add anythinhg
+            query += f"{start_and} s.title ILIKE %s "
+            start_and = "AND"
+        elif search_by == "Description":
+            query += f"{start_and} s.description ILIKE %s "
+            start_and = "AND"
+        queryInputs += (f"%{search_term}%",)
 
-    # (1)
-    if language_name != "":
+    # (1) Language filter
+    # Only filter by language if language_name is NOT "None"
+    if language_name != "" and language_name != "None":
         query += f"{start_and} l.language_name = %s "
         queryInputs += (language_name,)
         start_and = "AND"
 
-    #(2)
+    #(2) Input types
     if len(input_types) > 0:
         query += f"{start_and} s.input_types LIKE %s "
         input_types_string = ",".join(input_types)
         queryInputs += (f"%{input_types_string}%",)
         start_and = "AND"
-
-    #(3)
+    
+    #(3) Output types
     if len(output_types) > 0:
         query += f"{start_and} s.output_types LIKE %s "
         output_types_string = ",".join(output_types)
         queryInputs += (f"%{output_types_string}%",)
         start_and = "AND"
-
-    print(query)
-    print(queryInputs)
+        
     cursor.execute(query, queryInputs)
     return cursor.fetchall()
 

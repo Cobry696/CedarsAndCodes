@@ -23,3 +23,19 @@ def send_email(email_sender: str, sender_password: str, to_email: str, body: str
     except Exception as e:
         pass
         print(f"Failed to send email: {e}")
+
+def romanToInt(s: str) -> int:
+    values = {"I" : 1, "V" : 5, "X" : 10, "L" : 50, "C" : 100, "D" : 500, "M" : 1000}
+    numList = []
+    for num in s:
+        numList.append(values[num])
+    current = 0
+    previous = 0
+    for i in numList[::-1]:
+        if i >= previous:
+            current += i
+        else:
+            current -= i
+        previous = i
+
+    return current
